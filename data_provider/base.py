@@ -454,10 +454,10 @@ class DataFetcherManager:
 
         # 初始化数据源列表
         self._fetchers = [
-            efinance,
-            akshare,
-            tushare,
-            pytdx,
+            #efinance,
+            #akshare,
+            # tushare,
+            # pytdx,
             baostock,
             yfinance,
         ]
