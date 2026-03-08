@@ -440,6 +440,7 @@ class DataFetcherManager:
         from .pytdx_fetcher import PytdxFetcher
         from .baostock_fetcher import BaostockFetcher
         from .yfinance_fetcher import YfinanceFetcher
+        from .crypto_fetcher import CryptoFetcher
         from src.config import get_config
 
         config = get_config()
@@ -451,6 +452,7 @@ class DataFetcherManager:
         pytdx = PytdxFetcher()      # 通达信数据源（可配 PYTDX_HOST/PYTDX_PORT）
         baostock = BaostockFetcher()
         yfinance = YfinanceFetcher()
+        crypto = CryptoFetcher()
 
         # 初始化数据源列表
         self._fetchers = [
@@ -460,6 +462,7 @@ class DataFetcherManager:
             # pytdx,
             baostock,
             yfinance,
+            crypto,
         ]
 
         # 按优先级排序（Tushare 如果配置了 Token 且初始化成功，优先级为 0）
@@ -504,6 +507,7 @@ class DataFetcherManager:
             DataFetchError: 所有数据源都失败时抛出
         """
         from .us_index_mapping import is_us_index_code, is_us_stock_code
+        from .crypto_fetcher import CryptoFetcher
 
         # Normalize code (strip SH/SZ prefix etc.)
         stock_code = normalize_stock_code(stock_code)
@@ -511,6 +515,41 @@ class DataFetcherManager:
         errors = []
         total_fetchers = len(self._fetchers)
         request_start = time.time()
+
+        # 快速路径：加密货币直接路由到 CryptoFetcher
+        crypto_fetcher = next((f for f in self._fetchers if isinstance(f, CryptoFetcher)), None)
+        if crypto_fetcher and crypto_fetcher._is_crypto_code(stock_code):
+            try:
+                logger.info(
+                    f"[数据源尝试 1/1] [{crypto_fetcher.name}] "
+                    f"加密货币 {stock_code} 直接路由..."
+                )
+                df = crypto_fetcher.get_daily_data(
+                    stock_code=stock_code,
+                    start_date=start_date,
+                    end_date=end_date,
+                    days=days,
+                )
+                if df is not None and not df.empty:
+                    elapsed = time.time() - request_start
+                    logger.info(
+                        f"[数据源完成] {stock_code} 使用 [{crypto_fetcher.name}] 获取成功: "
+                        f"rows={len(df)}, elapsed={elapsed:.2f}s"
+                    )
+                    return df, crypto_fetcher.name
+            except Exception as e:
+                error_type, error_reason = summarize_exception(e)
+                error_msg = f"[{crypto_fetcher.name}] ({error_type}) {error_reason}"
+                logger.warning(
+                    f"[数据源失败 1/1] [{crypto_fetcher.name}] {stock_code}: "
+                    f"error_type={error_type}, reason={error_reason}"
+                )
+                errors.append(error_msg)
+            # CryptoFetcher failed
+            error_summary = f"加密货币 {stock_code} 获取失败:\n" + "\n".join(errors)
+            elapsed = time.time() - request_start
+            logger.error(f"[数据源终止] {stock_code} 获取失败: elapsed={elapsed:.2f}s\n{error_summary}")
+            raise DataFetchError(error_summary)
 
         # 快速路径：美股指数与美股股票直接路由到 YfinanceFetcher
         if is_us_index_code(stock_code) or is_us_stock_code(stock_code):

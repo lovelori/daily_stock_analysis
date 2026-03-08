@@ -99,6 +99,7 @@ class RealtimeSource(Enum):
     TUSHARE = "tushare"             # Tushare Pro
     TENCENT = "tencent"             # 腾讯直连
     SINA = "sina"                   # 新浪直连
+    CRYPTO = "crypto"               # 加密货币
     FALLBACK = "fallback"           # 降级兜底
 
 
