@@ -293,5 +293,5 @@ class CryptoFetcher(BaseFetcher):
 
         except Exception as e:
             logger.error(f"获取 {crypto_code} 实时报价失败: {e}")
-            return None</content>
+            return None
 <parameter name="filePath">d:\1\daily_stock_analysis\data_provider\crypto_fetcher.py
