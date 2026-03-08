@@ -167,6 +167,9 @@ class CryptoFetcher(BaseFetcher):
 
             return df
 
+        except Exception as e:
+            if isinstance(e, DataFetchError):
+                raise
             raise DataFetchError(f"Yahoo Finance 获取加密货币数据失败: {e}") from e
 
     def _normalize_data(self, df: pd.DataFrame, crypto_code: str) -> pd.DataFrame:
